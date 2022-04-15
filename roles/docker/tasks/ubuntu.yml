@@ -1,0 +1,59 @@
+---
+- name: Remove docker if already installed
+  apt:
+    name: "{{ docker_package_to_remove }}"
+    state: absent
+  notify: Update_all_packages
+  tags:
+    - docker
+    - packages
+
+
+
+- name: Add Docker apt key.
+  apt_key:
+    url: "{{ apt_key_url }}"
+    id: "{{ apt_key_id }}"
+    state: present
+  register: add_repository_key
+  when:
+    - apt_key_url != ''
+
+- name: Setup docker repository
+  ansible.builtin.apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+    state: present
+    update_cache: yes
+  notify: Update_all_packages
+
+- name: Add docker dependencies
+  apt:
+    name: "{{ docker_dependencies }}"
+    state: present
+
+- name: Install Docker
+  apt:
+    name: "{{ docker }}"
+    state: present
+
+- name: Install docker-compose
+  get_url:
+    url : https://github.com/docker/compose/releases/download/v2.2.3/docker-compose-Linux-x86_64
+    dest: /usr/local/bin/docker-compose
+    mode: "u+x,g+x"
+
+- name: Add user(s) to docker group
+  user:
+    name: "{{ item }}"
+    groups: docker
+    append: true
+  loop: "{{ docker_users }}"
+  notify: Reload_docker
+
+- name: restart docker
+  systemd:
+    state: restarted
+    name: docker
+
+- name: Create symlink
+  file: src=/usr/local/bin/docker-compose dest=/usr/bin/docker-compose state=link

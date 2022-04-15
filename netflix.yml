@@ -1,0 +1,6 @@
+---
+- name: main
+  hosts: netflix_host
+  become: true
+  roles:
+    - docker
