@@ -1,0 +1,158 @@
+version: "2.1"
+
+services:
+
+  jellyfin:
+    image: ghcr.io/linuxserver/jellyfin
+    container_name: jellyfin
+    environment:
+      - PUID=1000
+      - PGID=1000
+    labels:
+    - "traefik.enable=true"
+    - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+    - "traefik.http.routers.jellyfin.rule=Host(`jellyfin.{{ domain_name }}`)"
+    # Enable HTTPS
+    - "traefik.http.routers.jellyfin.tls=true"
+    - "traefik.http.routers.jellyfin.tls.certresolver=le"
+    # HTTP to HTTPS
+    - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+    - "traefik.http.routers.jellyfin-redirs.rule=hostregexp(`{host:.+}`)"
+    - "traefik.http.routers.jellyfin-redirs.entrypoints=http"
+    - "traefik.http.routers.jellyfin-redirs.middlewares=redirect-to-https"
+    networks:
+      - media
+    ports:
+      - 8096:8096
+      - 8920:8920 #optional
+      - 7359:7359/udp #optional
+      - 1900:1900/udp #optional
+    volumes:
+      - {{ containers_path | default(lookup('env', 'HOME')) + '/Containers' }}/Media/jellyfin/library:/config
+      - {{ main_storage_path }}/Media/TVShows:/tvshows
+      - {{ main_storage_path }}/Media/Movies:/movies
+      - {{ main_storage_path }}/Media/Anime:/anime
+      - {{ main_storage_path }}/Media/Documentaries:/documentaries
+      - {{ main_storage_path }}/Media/Spectacles:/spectacles
+      - {{ main_storage_path }}/Media/Sport:/sport
+      - {{ main_storage_path }}/Media/Cartoons:/cartoons
+
+
+  radarr:
+    image: ghcr.io/linuxserver/radarr
+    container_name: radarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+    labels:
+    - "traefik.enable=true"
+    - "traefik.http.routers.radarr.rule=Host(`radarr.{{ domain_name }}`)"
+    - "traefik.http.routers.radarr.entrypoints=http"
+    networks:
+      - media
+    ports:
+      - 7878:7878
+    volumes:
+      - {{ containers_path | default(lookup('env', 'HOME')) + '/Containers' }}/Media/radarr/config:/config
+      - {{ main_storage_path }}/Media/Movies:/movies #optional
+      - {{ main_storage_path }}/Torrents/Downloads:/downloads #optional
+
+
+  sonarr:
+    image: ghcr.io/linuxserver/sonarr
+    container_name: sonarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+    labels:
+    - "traefik.enable=true"
+    - "traefik.http.routers.sonarr.rule=Host(`sonarr.{{ domain_name }}`)"
+    - "traefik.http.routers.sonarr.entrypoints=http"
+    networks:
+      - media
+    ports:
+      - 8989:8989
+    volumes:
+      - {{ containers_path | default(lookup('env', 'HOME')) + '/Containers' }}/Media/sonarr/config:/config
+      - {{ main_storage_path }}/Torrents/Downloads:/downloads
+      - {{ main_storage_path }}/Media/TVShows:/tv #optional
+      - {{ main_storage_path }}/Media/Anime:/anime #optional
+      - {{ main_storage_path }}/Media/Sport:/sport
+      - {{ main_storage_path }}/Media/Cartoons:/cartoons
+
+
+  readarr:
+    image: ghcr.io/linuxserver/readarr:nightly
+    container_name: readarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+    labels:
+    - "traefik.enable=true"
+    - "traefik.http.routers.readarr.rule=Host(`readarr.{{ domain_name }}`)"
+    - "traefik.http.routers.readarr.entrypoints=http"
+    networks:
+      - media
+    ports:
+      - 8787:8787
+    volumes:
+      - {{ containers_path | default(lookup('env', 'HOME')) + '/Containers' }}/Media/readarr/config:/config
+      - {{ main_storage_path }}/Torrents/Downloads:/downloads
+      - {{ main_storage_path }}/Media/Comics:/comics
+      - {{ main_storage_path }}/Media/Manga:/manga
+      - {{ main_storage_path }}/Media/Webtoon:/webtoon
+
+
+  jackett:
+    image: ghcr.io/linuxserver/jackett
+    container_name: jackett
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - AUTO_UPDATE=true #optional
+    labels:
+    - "traefik.enable=true"
+    - "traefik.http.routers.jackett.rule=Host(`jackett.{{ domain_name }}`)"
+    - "traefik.http.routers.jackett.entrypoints=http"
+    networks:
+      - media
+    ports:
+      - 9117:9117
+    volumes:
+      - {{ containers_path | default(lookup('env', 'HOME')) + '/Containers' }}/Media/Jackett/config:/config
+      - {{ main_storage_path }}/Jackett/Downloads:/downloads
+
+
+  flaresolverr:
+    container_name: flaresolverr
+    ports:
+        - '8191:8191'
+    environment:
+        - LOG_LEVEL=info
+    image: 'ghcr.io/flaresolverr/flaresolverr:latest'
+
+
+  deluge:
+    image: lscr.io/linuxserver/deluge
+    container_name: deluge
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - DELUGE_LOGLEVEL=error #optional
+    user: root
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.deluge.rule=Host(`deluge.{{ domain_name }}`)"
+      - "traefik.http.routers.deluge.entrypoints=http"
+      - "traefik.http.services.deluge.loadbalancer.server.port=8112"
+    volumes:
+      - {{ containers_path | default(lookup('env', 'HOME')) + '/Containers' }}/Media/deluge/config:/config
+      - {{ main_storage_path }}/Torrents/Downloads:/downloads
+    ports:
+      - 8112:8112
+      - 6882:6881
+      - 6882:6881/udp
+
+networks:
+  media:
+    driver: bridge

@@ -1,0 +1,47 @@
+---
+
+- name: Ensure Traefik directory exists
+  file:
+    path: "{{ containers_path }}/Traefik"
+    state: "directory"
+
+- name: Setup Traefik docker-compose file
+  template:
+    src: ../templates/Containers/Traefik/docker-compose.yml.j2 # y'a pas d'autre manière que de mettre le path relatif ?
+    dest: "{{ containers_path }}/Traefik/docker-compose.yml"
+
+#- name: Launch Traefik container
+#  community.docker.docker_compose:
+#    project_src: "{{ containers_path }}/Traefik/"
+#  register: output
+
+- name: Launch Traefik container
+  command: docker-compose up -d
+  args:
+    chdir: "{{ containers_path }}/Traefik"
+
+#- ansible.builtin.debug:
+#    var: output
+
+- name: Ensure Portainer directory exists
+  file:
+    path: "{{ containers_path }}/Traefik"
+    state: "directory"
+
+- name: Setup Portainer docker-compose file
+  ansible.builtin.template:
+    src: /Containers/Portainer/docker-compose.yml.j2
+    dest: "{{ containers_path }}/Portainer/docker-compose.yml"
+
+- name: Launch Portainer
+  community.docker.docker_compose:
+    project_src: "{{ containers_path }}/Portainers/"
+  register: output
+
+- ansible.builtin.debug:
+    var: output
+
+#- name: Launch Netflix stack
+#  community.docker.docker_compose:
+#    project_src: {{ containers_path | default(lookup('env', 'HOME')) + '/Containers' }}/Media
+#  register: output

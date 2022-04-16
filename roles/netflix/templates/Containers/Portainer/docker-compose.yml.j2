@@ -1,0 +1,32 @@
+version: '3'
+services:
+
+  portainer:
+    image: portainer/portainer-ce
+    container_name: portainer
+    labels:
+    - "traefik.enable=true"
+    - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+    - "traefik.http.routers.portainer.rule=Host(`portainer.{{ domain_name }}`)"
+    # Enable HTTPS
+    - "traefik.http.routers.portainer.tls=true"
+    - "traefik.http.routers.portainer.tls.certresolver=le"
+    # HTTP to HTTPS
+    - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+    - "traefik.http.routers.portainer-redirs.rule=hostregexp(`{host:.+}`)"
+    - "traefik.http.routers.portainer-redirs.entrypoints=http"
+    - "traefik.http.routers.portainer-redirs.middlewares=redirect-to-https"
+    networks:
+    - portainer
+    ports:
+    - '17000:9000'
+    - '16000:8000'
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - {{ containers_path | default(lookup('env', 'HOME')) + '/Containers' }}/Portainer/portainer:/data
+      - {{ containers_path | default(lookup('env', 'HOME')) + '/Containers' }}/Portainer/portainer/template.json:/usr/share/nginx/html/templates.json # Demander à Paul comment indiquer le fichier template.json situé dans le folder files
+
+networks:
+  portainer:
+    driver: bridge

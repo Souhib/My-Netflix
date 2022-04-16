@@ -1,0 +1,36 @@
+version: '3'
+services:
+
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    command:
+      - --log.level=DEBUG
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --accesslog=true
+      - --accesslog.fields.names.StartUTC=drop
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.{{ domain_name }}`)"
+      # Enable HTTPS
+      - "traefik.http.routers.traefik.tls=true"
+      - "traefik.http.routers.traefik.tls.certresolver=le"
+      # HTTP to HTTPS
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.routers.traefik-redirs.rule=hostregexp(`{host:.+}`)"
+      - "traefik.http.routers.traefik-redirs.entrypoints=http"
+      - "traefik.http.routers.traefik-redirs.middlewares=redirect-to-https"
+    network_mode: host
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - {{ containers_path | default(lookup('env', 'HOME')) + '/Containers' }}/Traefik/traefik.yml:/etc/traefik/traefik.yml
+      - {{ containers_path | default(lookup('env', 'HOME')) + '/Containers' }}/Traefik/certificates:/certs
