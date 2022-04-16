@@ -1,0 +1,10 @@
+- name: Update_all_packages
+  apt:
+    name: "*"
+    state: latest
+
+- name: Reload_docker
+  systemd:
+    state: reloaded
+    daemon_reload: true
+    name: docker
